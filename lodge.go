@@ -1,36 +1,59 @@
 package main
 
 import (
-  "log"
-  "net"
+  "fmt"
+	"log"
+	"net"
+  zmq "github.com/zeromq/goczmq"
 )
 
 func main() {
-  addr, err := net.ResolveUDPAddr("udp", "localhost:54321")
+  tcpServer()
+  //udpServer()
+}
 
-  fatalError(err)
+func tcpServer() {
+  rep, _ := zmq.NewRep("tcp://*:54321")
+  defer rep.Destroy()
 
-  conn, err := net.ListenUDP("udp", addr)
-
-  fatalError(err)
-
-  defer conn.Close()
-
-  buf := make([]byte, 1024)
+  log.Println("Rep created and bound.")
 
   for {
-    rlen, addr, err := conn.ReadFromUDP(buf)
+    message, _ := rep.RecvMessage()
+    log.Printf("message: %v", string(message[0]))
 
-    fatalError(err)
+    reply := fmt.Sprintf("ok: %v", string(message[0]))
 
-    s := string(buf[:rlen])
-
-    log.Printf("Received: [%v]: %v\n", addr, s)
+    rep.SendFrame([]byte(reply), 0)
   }
 }
 
-func fatalError(err error){
-  if err != nil {
-    log.Fatal("error: ", err.Error())
-  }
+func udpServer() {
+	addr, err := net.ResolveUDPAddr("udp", "localhost:54321")
+
+	fatalError(err)
+
+	conn, err := net.ListenUDP("udp", addr)
+
+	fatalError(err)
+
+	defer conn.Close()
+
+	buf := make([]byte, 1024)
+
+	for {
+		rlen, addr, err := conn.ReadFromUDP(buf)
+
+		fatalError(err)
+
+		s := string(buf[:rlen])
+
+		log.Printf("Received: [%v]: %v\n", addr, s)
+	}
+}
+
+func fatalError(err error) {
+	if err != nil {
+		log.Fatal("error: ", err.Error())
+	}
 }
